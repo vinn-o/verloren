@@ -344,3 +344,4 @@ def get_room_status(room_id: int, date_str: str, time_str: str, db_path=None):
         'color': 'green',
         'next_free_time': 'Free all day'
     }
+####

@@ -1,0 +1,5 @@
+flask
+flask-cors
+streamlit
+folium
+streamlit-folium
