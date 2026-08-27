@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClassSpace | JKUAT Lecture Room Finder & Navigation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="logo-icon">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div class="brand-text">
+                <h1>ClassSpace <span class="badge-jkuat">JKUAT</span></h1>
+                <p>Lecture Room Finder & Navigation System</p>
+            </div>
+        </div>
+
+        <div class="nav-controls">
+            <div class="location-select-group">
+                <i class="fa-solid fa-location-dot" style="color: #38bdf8;"></i>
+                <select id="user-location-select" title="Select your starting location on campus">
+                    <option value="-1.0970,37.0120">🚪 JKUAT Main Gate</option>
+                    <option value="-1.0940,37.0150">📚 JKUAT Main Library</option>
+                    <option value="-1.0952,37.0145">🥪 Student Centre / Mess</option>
+                    <option value="-1.0960,37.0135">🏢 Administration Block</option>
+                    <option value="-1.0932,37.0175">🏠 Assembly Hall / Gate B</option>
+                </select>
+            </div>
+
+            <div class="datetime-picker-group">
+                <div class="input-with-icon">
+                    <i class="fa-regular fa-calendar"></i>
+                    <input type="date" id="filter-date">
+                </div>
+                <div class="input-with-icon">
+                    <i class="fa-regular fa-clock"></i>
+                    <input type="time" id="filter-time">
+                </div>
+                <button id="btn-refresh-status" class="btn btn-secondary" title="Refresh Live Map & Status">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <div class="user-action-group" id="user-nav-container">
+                <button id="btn-open-login" class="btn btn-primary">
+                    <i class="fa-solid fa-user-lock"></i> Login / Register
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="app-container">
+        <!-- Stats Banner -->
+        <section class="stats-banner">
+            <div class="stat-card">
+                <div class="stat-icon icon-total"><i class="fa-solid fa-door-open"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-total-rooms">0</h3>
+                    <p>Total Lecture Rooms</p>
+                </div>
+            </div>
+            <div class="stat-card stat-free" id="filter-card-free">
+                <div class="stat-icon icon-free"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-free-rooms">0</h3>
+                    <p>Free Now (Green)</p>
+                </div>
+            </div>
+            <div class="stat-card stat-soon" id="filter-card-soon">
+                <div class="stat-icon icon-soon"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-soon-rooms">0</h3>
+                    <p>Booked Soon (Yellow)</p>
+                </div>
+            </div>
+            <div class="stat-card stat-occupied" id="filter-card-occupied">
+                <div class="stat-icon icon-occupied"><i class="fa-solid fa-ban"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-occupied-rooms">0</h3>
+                    <p>Occupied Now (Red)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Grid Layout (Map + Directory) -->
+        <div class="content-grid">
+            <!-- Left Panel: Folium Interactive Map -->
+            <section class="map-section card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-map-location-dot"></i> Campus Navigation Map (Folium)</h2>
+                    <div class="map-legend">
+                        <span class="legend-item"><i class="dot dot-green"></i> Free</span>
+                        <span class="legend-item"><i class="dot dot-yellow"></i> Booked Soon</span>
+                        <span class="legend-item"><i class="dot dot-red"></i> Occupied</span>
+                    </div>
+                </div>
+                <div class="map-wrapper">
+                    <iframe id="folium-map-frame" src="/map-html" title="JKUAT Folium Campus Map"></iframe>
+                </div>
+            </section>
+
+            <!-- Right Panel: Room Directory & Filters -->
+            <section class="directory-section card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-list-check"></i> Lecture Rooms Directory</h2>
+                    <button id="btn-seed-data" class="btn btn-sm btn-outline" title="Reset JKUAT Sample Database">
+                        <i class="fa-solid fa-database"></i> Reset Seed Data
+                    </button>
+                </div>
+
+                <div class="filter-controls">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="search-input" placeholder="Search room name or building...">
+                    </div>
+                    
+                    <div class="filter-dropdowns">
+                        <select id="filter-building">
+                            <option value="">All Campus Buildings</option>
+                        </select>
+                        
+                        <select id="filter-status">
+                            <option value="all">All Statuses</option>
+                            <option value="free">Free Only</option>
+                            <option value="booked_soon">Booked Soon Only</option>
+                            <option value="occupied">Occupied Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="rooms-list" id="rooms-list-container">
+                    <div class="loading-spinner">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> Loading JKUAT lecture rooms...
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Booking Modal -->
+    <div class="modal-overlay" id="modal-booking">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-calendar-plus"></i> Book Lecture Room</h3>
+                <button class="btn-close" id="btn-close-booking">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-create-booking">
+                    <div class="form-group">
+                        <label for="booking-room-select">Select Lecture Room *</label>
+                        <select id="booking-room-select" required>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="booking-course-unit">Course Unit / Event Title *</label>
+                        <input type="text" id="booking-course-unit" placeholder="e.g. ICS 2101: Data Structures" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="booking-user-email">Your Email Address *</label>
+                        <input type="email" id="booking-user-email" placeholder="brian.kiprop@students.jkuat.ac.ke" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="booking-date">Date *</label>
+                        <input type="date" id="booking-date" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="booking-start-time">Start Time *</label>
+                            <input type="time" id="booking-start-time" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-end-time">End Time *</label>
+                            <input type="time" id="booking-end-time" required>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-error" id="booking-error-alert" style="display: none;"></div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-booking">
+                            <i class="fa-solid fa-check"></i> Confirm Booking
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login / Register Modal -->
+    <div class="modal-overlay" id="modal-auth">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="auth-tabs">
+                    <button class="tab-btn active" id="tab-login">Sign In</button>
+                    <button class="tab-btn" id="tab-register">Create Account</button>
+                </div>
+                <button class="btn-close" id="btn-close-auth">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-login" class="auth-form">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="login-email" placeholder="brian.kiprop@students.jkuat.ac.ke" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="alert alert-error" id="login-error-alert" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                </form>
+
+                <form id="form-register" class="auth-form" style="display: none;">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="reg-name" placeholder="Brian Kiprop" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address *</label>
+                        <input type="email" id="reg-email" placeholder="brian.kiprop@students.jkuat.ac.ke" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role *</label>
+                        <select id="reg-role" required>
+                            <option value="class_rep">Class Representative</option>
+                            <option value="lecturer">Lecturer</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Course / Department</label>
+                        <input type="text" id="reg-course" placeholder="BSc. Computer Science Y1">
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" id="reg-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="alert alert-error" id="reg-error-alert" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Bookings Modal -->
+    <div class="modal-overlay" id="modal-my-bookings">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-bookmark"></i> My Active Bookings</h3>
+                <button class="btn-close" id="btn-close-my-bookings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="my-bookings-container">
+                    <p class="text-muted">Loading your bookings...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
