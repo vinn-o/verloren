@@ -78,7 +78,7 @@ def seed_database(db_path=None):
             "building": ("College of Health Sciences (COHES)", -1.0930, 37.0135),
             "rooms": [
                 ("COHES Hall 1", 180, -1.09301, 37.01351),
-                ("COHES Hall 2", 180, -1.09302, 37.01352),
+                ("COHES Hall 2", 150, -1.09302, 37.01352),
                 ("COHES 102", 90, -1.09303, 37.01353),
             ]
         },
