@@ -1,5 +1,7 @@
 flask
 flask-cors
+werkzeug
 streamlit
 folium
 streamlit-folium
+pytest
