@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     end_time TIME NOT NULL,
     status TEXT DEFAULT 'confirmed' CHECK(status IN ('confirmed', 'cancelled')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
