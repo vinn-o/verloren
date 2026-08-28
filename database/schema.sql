@@ -49,4 +49,3 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 -- Index to optimize real-time availability and double-booking conflict checks
 CREATE INDEX IF NOT EXISTS idx_room_datetime ON bookings(room_id, date, start_time, end_time);
-###
