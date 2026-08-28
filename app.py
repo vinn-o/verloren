@@ -131,7 +131,7 @@ if 'target_room_id' not in st.session_state:
 # ---------------------------------------------------------------------------
 # Sidebar Filters & Location Settings
 # ---------------------------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/isometric-folders/100/graduation-cap.png", width=64)
+st.sidebar.image("jkuat-logo.jpg", width=64)
 st.sidebar.title("ClassSpace JKUAT")
 st.sidebar.markdown("**Lecture Room Finder & Campus Navigation**")
 
