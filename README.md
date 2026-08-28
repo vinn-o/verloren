@@ -1,231 +1,185 @@
-ClassSpace — JKUAT Lecture Room Finder & Booking System
+# ClassSpace JKUAT
 
-ClassSpace is a real-time lecture room finder and booking system designed for JKUAT students, class representatives, lecturers, and administrators. It helps users locate available lecture rooms, view their current occupancy status, and make bookings while preventing double bookings.
+ClassSpace is a prototype lecture-room finder and booking system for JKUAT. It stores campus buildings, rooms, users, and bookings in SQLite. The project currently contains two separate application surfaces:
 
-Features
+- **Streamlit UI:** the primary interactive application in `app.py`.
+- **Flask API:** a JSON backend in `my_main.py` for programmatic access and API tests.
 
-🔐 User authentication — Registration, login, and logout.
+These surfaces are not currently connected to each other. The Streamlit app calls the database models directly; the Flask API serves JSON routes and does not render the HTML template.
 
-🏫 Lecture room discovery — Browse available JKUAT lecture rooms.
+## Current Features
 
-🗺️ Interactive campus map — Folium map with color-coded room availability.
+### Streamlit application
 
-📅 Room booking — Book rooms for specific dates and time slots.
+- View room counts for total, free, booked-soon, and occupied rooms.
+- Filter rooms by starting landmark, date, time, building, capacity, and status.
+- View an interactive Folium satellite map with room markers.
+- Calculate approximate walking distance and time from a selected campus landmark.
+- Open a Google Maps walking route for a selected room.
+- Search the room directory and inspect confirmed bookings.
+- Create bookings and prevent overlapping confirmed bookings.
+- Look up active bookings by email and cancel a booking.
+- Seed the database with JKUAT sample data from the sidebar.
+- Use the dashboard on smaller screens with Streamlit's responsive layout behavior. The current source still contains some fixed desktop-oriented columns and should be tested on a real phone.
 
-🚫 Double-booking prevention — Prevents overlapping confirmed bookings for the same room.
+### Flask API
 
-📋 Booking management — View booking history and cancel bookings.
+The Flask service in `my_main.py` provides routes for:
 
-🔄 Real-time status updates — Room occupancy information can be refreshed automatically.
+- Health checks: `GET /` and `GET /api/health`
+- User registration and login
+- User lookup by ID or email
+- Building and room creation/listing
+- Individual room lookup and room status
+- Room status-map data for all rooms
+- Room booking listing and individual booking lookup
+- Booking creation and cancellation
+- Database initialization and seeding
 
-🎨 JKUAT-themed interface — Bootstrap 5.3 with custom JKUAT green and gold styling.
+## Technology
 
-Technology Stack
+- Python 3
+- Streamlit
+- Flask and Flask-CORS
+- Folium and `streamlit-folium`
+- SQLite
+- Raw SQL through Python's `sqlite3` module
+- `pytest` and `unittest`-style test cases
 
-Component                                   Technology
+## Repository Structure
 
-Backend                                     Flask / Python 3
-
-Database                                    SQLite
-
-Database access                             Raw SQL
-
-Maps                                        Folium
-
-Frontend                                    Jinja2 Templates
-
-UI Framework                                Bootstrap 5.3
-
-Styling                                     Custom CSS
-
-Client-side functionality                   JavaScript
-
-Project Structure
-
-classspace/
-├── app.py                  # Flask application entry point
-├── models.py               # Database initialization and SQL queries
-├── map_builder.py          # Folium campus map builder
-├── seed_data.py            # Database seeding script
-├── routes/
-│   ├── __init__.py
-│   ├── auth_routes.py      # Authentication routes
-│   ├── room_routes.py      # Room browsing and dashboard routes
-│   └── booking_routes.py   # Booking and cancellation routes
-├── templates/
-│   ├── base.html
-│   ├── index.html
-│   ├── map.html
-│   ├── rooms.html
-│   ├── book.html
-│   ├── my_bookings.html
-│   ├── login.html
-│   └── register.html
-├── static/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       └── app.js
+```text
+.
+├── app.py                    # Streamlit UI entry point
+├── my_main.py                # Flask JSON API entry point
+├── models.py                 # Users, rooms, bookings, and status logic
+├── requirements.txt          # Python dependencies
 ├── database/
-│   └── classspace.db
-├── requirements.txt
-├── .gitignore
-└── README.md
+│   ├── db.py                 # SQLite connection and schema initialization
+│   ├── schema.sql            # Database tables and indexes
+│   ├── seed.py               # JKUAT sample data generator
+│   └── classspace.db         # Local SQLite database, when present
+├── static/css/style.css      # Standalone stylesheet for the unused template UI
+├── templates/index.html      # Standalone HTML prototype, not served by my_main.py
+└── tests/
+    ├── test_api.py           # Flask API tests
+    └── test_db.py            # Database/model tests
+```
 
-How Room Availability Works
+## Setup
 
-The campus map uses three main status colors:
+Create and activate a virtual environment, then install the dependencies:
 
-🟢 Green — Free: The room has no current booking.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
-🔴 Red — Occupied: The room is currently occupied.
+The active Python interpreter must be the same environment used by VS Code, Streamlit, and pytest. This avoids import errors such as missing `streamlit`, `folium`, or `flask_cors`.
 
-🟠 Orange — Upcoming: The room has a booking starting within the next 30 minutes.
+## Initialize Sample Data
 
-Map markers provide room information and a direct link to the room booking page.
+The seed script deletes the selected database file, recreates its schema, and inserts sample users, buildings, rooms, and bookings:
 
-DOUBLE BOOKING PREVENTION
+```bash
+python database/seed.py
+```
 
-Before creating a booking, ClassSpace checks whether another confirmed booking overlaps with the requested time for the same room and date.
+The default database is `database/classspace.db`.
 
-The core check is:
+Sample accounts are created for demonstration only:
 
-SELECT id FROM bookings
-WHERE room_id = ? AND date = ? AND status = 'confirmed'
-  AND start_time < ? AND end_time > ?
+| Role | Email | Password |
+| --- | --- | --- |
+| Class representative | `brian.kiprop@students.jkuat.ac.ke` | `rep123` |
+| Lecturer | `jane.muthoni@jkuat.ac.ke` | `doc123` |
+| Administrator | `admin@jkuat.ac.ke` | `admin123` |
 
-If an overlap is found, the booking is rejected and the user receives a friendly error message.
+Do not use these credentials in a deployed system.
 
-This ensures that two users cannot create conflicting confirmed bookings for the same lecture room and time period.
+## Run the Streamlit UI
 
-DATABASE SEEDING
+```bash
+streamlit run app.py
+```
 
-The project includes a seed_data.py script for initializing the database and inserting sample users, buildings, rooms, and bookings.
+Streamlit normally opens at <http://localhost:8501>.
 
-Run:
+To open it from a phone on the same local network, expose the development server on the network interface:
 
-python seed_data.py
+```bash
+streamlit run app.py --server.address 0.0.0.0
+```
 
-Expected output:
+Then open `http://YOUR_COMPUTER_IP:8501` on the phone. The computer and phone must be on the same network, and the firewall must allow port `8501`.
 
-Initializing database...
-Seeding users...
-Seeding buildings...
-Seeding rooms...
-Seeding bookings...
-Seed complete!
+## Run the Flask API
 
-Demo Accounts
+```bash
+python my_main.py
+```
 
-Role                                     Email                              Password
+The development API listens on <http://localhost:5000>. A health check is available at:
 
-Class Representative                     rep@jkuat.ac.ke                    demo123
+```bash
+curl http://localhost:5000/api/health
+```
 
-Lecturer                                 lecturer@jkuat.ac.ke                demo123
+The API reads the same default SQLite database as the Streamlit app. `DB_PATH` can be overridden in Flask tests through `app.config['DB_PATH']`; there is currently no environment-based production database configuration.
 
-Admin                                    admin@jkuat.ac.ke                   admin123
+## Test
 
-Security note: These are demonstration credentials. Change or remove seeded passwords before using the application in a real deployment.
+After installing `requirements.txt`:
 
-Installation
+```bash
+pytest -q
+```
 
-1. Clone the repository
+The tests cover:
 
-git clone <your-github-repository-url>
-cd classspace
+- User creation, password hashing, and login behavior
+- Building and room CRUD operations
+- Booking creation and overlap prevention
+- Booking cancellation and ownership checks
+- Room availability status calculations
+- The Flask health, room, user, booking, and status-map endpoints
 
-2. Install dependencies
+## Booking Rules
 
-Make sure Python 3 is installed, then run:
+Bookings are stored with `confirmed` or `cancelled` status. A new confirmed booking is rejected when its interval overlaps an existing confirmed booking for the same room and date:
 
-pip install -r requirements.txt
+```text
+existing.start_time < requested.end_time
+AND existing.end_time > requested.start_time
+```
 
-3. Initialize the database
+Adjacent bookings, such as `08:00-10:00` and `10:00-12:00`, are allowed.
 
-python seed_data.py
+Room status is calculated as follows:
 
-4. Start the application
+- **Occupied:** a confirmed booking is active at the requested time.
+- **Booked soon:** the next confirmed booking starts within 60 minutes.
+- **Free:** neither condition applies.
 
-python app.py
+## Important Current Limitations
 
-5. Open ClassSpace
+This is not production-ready yet:
 
-Visit:
+- The Streamlit app has no real login/session authentication. Its booking form looks up an email and automatically creates an unknown user with a hardcoded password.
+- The Flask API returns login results but does not issue sessions or tokens, and most data-changing routes do not enforce authentication or roles.
+- CORS is enabled globally in `my_main.py`.
+- The database uses SQLite and has no migration system or deployment backup process.
+- The development Flask server and Streamlit server should not be used as production servers.
+- The standalone `templates/index.html` and `static/css/style.css` prototype are not wired into the Flask application. There is currently no `static/js/app.js` in the repository.
+- The Streamlit map uses external Folium tile and image resources, so those resources need network access.
+- The current automated tests target the database and Flask API, not the Streamlit UI, map rendering, mobile layout, or browser workflows.
 
-http://127.0.0.1:5000
+## Recommended Next Steps
 
-MAIN USER FLOW
-
-Register / Login
-       ↓
-Dashboard
-       ↓
-View Available Rooms
-       ↓
-Check Interactive Campus Map
-       ↓
-Select a Room
-       ↓
-Choose Date & Time
-       ↓
-Check for Conflicts
-       ↓
-Confirm Booking
-       ↓
-View / Cancel Booking
-
-BUG FIXES AND INTEGRATION IMPROVEMENTS
-
-During development, several integration issues were identified and resolved:
-
-Password verification
-
- - Corrected the argument order used when calling the password verification function.
-
-User creation
-
- - Corrected argument alignment between the registration route and user-creation function.
-
-Flask blueprints
-
- - Removed conflicting route definitions from app.py and registered the application blueprints cleanly.
-
-Jinja2 template variables
-
- - Corrected mismatched variable names between room routes and the dashboard template.
-
-Verification
-
-Database initialization and seeding were tested successfully using:
-
-python seed_data.py
-
-The seed process completed successfully for users, buildings, rooms, and bookings.
-
-FUTURE IMPROVEMENTS
-
-Potential improvements include:
-
-Deploying the application to a production server.
-
-Adding administrator tools for managing rooms and buildings.
-
-Integrating the official JKUAT timetable.
-
-Adding email or notification reminders for upcoming bookings.
-
-Adding stronger role-based access control.
-
-Replacing demonstration credentials with secure production authentication.
-
-Adding automated tests for booking conflicts and authentication.
-
-Using a production database such as PostgreSQL for larger-scale deployment.
-
-Project Purpose
-
-ClassSpace aims to make lecture-room management easier by providing a single platform where users can find, verify, and book available rooms in real time, reducing confusion and preventing double bookings.
-
-Built With
-
-Python • Flask • SQLite • Folium • Jinja2 • Bootstrap 5.3 • JavaScript
+1. Choose whether Streamlit or a Flask-served frontend is the official product surface.
+2. Implement real authentication and role-based authorization before public deployment.
+3. Remove the hardcoded password and restrict database seed/reset operations to administrators.
+4. Add validation for email, dates, time ranges, room IDs, and user IDs at every API boundary.
+5. Add browser/UI tests and verify the Streamlit layout on common phone widths.
+6. Add production configuration, a database migration/backup strategy, restricted CORS, and a production deployment server.
