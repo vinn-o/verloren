@@ -74,6 +74,53 @@ st.markdown("""
         padding: 1rem;
         margin-bottom: 1rem;
     }
+
+    /* Keep the Streamlit layout usable on phone-sized viewports. */
+    @media (max-width: 640px) {
+        [data-testid="stAppViewContainer"] {
+            padding: 0;
+        }
+
+        [data-testid="stMainBlockContainer"] {
+            padding: 1rem 0.75rem 2rem;
+        }
+
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.75rem;
+        }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        [data-testid="stTabs"] [role="tablist"] {
+            overflow-x: auto;
+            scrollbar-width: none;
+            white-space: nowrap;
+        }
+
+        [data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar {
+            display: none;
+        }
+
+        [data-testid="stTabs"] button {
+            flex: 0 0 auto;
+            min-height: 3rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        [data-testid="stMetric"] {
+            padding: 0.75rem;
+        }
+
+        [data-testid="stButton"] button,
+        [data-testid="stLinkButton"] a,
+        [data-testid="stFormSubmitButton"] button {
+            min-height: 2.75rem;
+            width: 100%;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -170,11 +217,12 @@ else:
     filtered_rooms = room_status_list
 
 # Stat Metrics
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Rooms", len(rooms))
-col2.metric("🟢 Free Now", free_count)
-col3.metric("🟡 Booked Soon", soon_count)
-col4.metric("🔴 Occupied Now", occupied_count)
+metric_row_one = st.columns(2)
+metric_row_one[0].metric("Total Rooms", len(rooms))
+metric_row_one[1].metric("🟢 Free Now", free_count)
+metric_row_two = st.columns(2)
+metric_row_two[0].metric("🟡 Booked Soon", soon_count)
+metric_row_two[1].metric("🔴 Occupied Now", occupied_count)
 
 st.divider()
 
