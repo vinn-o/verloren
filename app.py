@@ -11,6 +11,7 @@ from streamlit_folium import st_folium
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database.db import DB_PATH
+from database.db import DB_PATH, ensure_db_initialized
 from database.seed import seed_database
 from models import (
     get_all_buildings,
@@ -19,9 +20,16 @@ from models import (
     create_booking,
     cancel_booking,
     get_bookings_by_room,
+    get_bookings_by_user,
     get_user_by_email,
     create_user
 )
+
+# Non-destructively ensure database tables exist
+try:
+    ensure_db_initialized(DB_PATH)
+except Exception as e:
+    st.warning(f"Database auto-initialization note: {e}")
 
 # ---------------------------------------------------------------------------
 # Helper: Distance & Walk Time Calculation (Haversine Formula)
@@ -138,6 +146,10 @@ st.markdown('<div class="main-header">🎓 ClassSpace JKUAT</div>', unsafe_allow
 st.markdown(f'<div class="sub-header">Real-time room occupancy & walking navigation for <strong>{date_str}</strong> at <strong>{time_str}</strong></div>', unsafe_allow_html=True)
 
 rooms = get_all_rooms(building_id=selected_building_id, min_capacity=min_capacity)
+
+if not rooms:
+    st.info("No lecture rooms found in the database. You can click 'Reset / Seed JKUAT Database' in the sidebar to populate default campus data.")
+    st.stop()
 
 room_status_list = []
 free_count = 0
@@ -342,12 +354,14 @@ with tab_rooms:
 
                 with col_sched:
                     st.write("**Confirmed Bookings for Today:**")
+                    st.write(f"**Confirmed Bookings for {date_str}:**")
                     bookings = get_bookings_by_room(room['id'], date_str=date_str)
                     if bookings:
                         for b in bookings:
                             st.write(f"• `{b['start_time']} - {b['end_time']}`: **{b['course_unit']}** ({b['user_name']})")
                     else:
                         st.caption("No confirmed bookings scheduled for today.")
+                        st.caption("No confirmed bookings scheduled for this date.")
 
 # ---------------------------------------------------------------------------
 # Tab 3: Book a Room
@@ -363,6 +377,7 @@ with tab_book:
         
         course_unit = st.text_input("Course Unit / Event Title *", placeholder="e.g. ICS 2101: Data Structures")
         user_email = st.text_input("Your Email Address *", value="brian.kiprop@students.jkuat.ac.ke")
+        user_email = st.text_input("Your Registered JKUAT Email Address *", value="brian.kiprop@students.jkuat.ac.ke")
         
         b_date = st.date_input("Booking Date", datetime.now().date())
         
@@ -381,6 +396,11 @@ with tab_book:
                 user = get_user_by_email(user_email)
                 if not user:
                     user = create_user("Student Rep", user_email, "class_rep", "BSc CS", "password123")
+                    st.error(f"User with email '{user_email}' not found. Please register an account first in the web portal or provide a seeded user email (e.g. brian.kiprop@students.jkuat.ac.ke).")
+                else:
+                    b_date_str = b_date.strftime('%Y-%m-%d')
+                    b_start_str = b_start_time.strftime('%H:%M')
+                    b_end_str = b_end_time.strftime('%H:%M')
                     
                 b_date_str = b_date.strftime('%Y-%m-%d')
                 b_start_str = b_start_time.strftime('%H:%M')
@@ -399,6 +419,19 @@ with tab_book:
                     st.balloons()
                 except ValueError as e:
                     st.error(f"❌ {str(e)}")
+                    try:
+                        booking = create_booking(
+                            room_id=target_room_id,
+                            user_id=user['id'],
+                            course_unit=course_unit,
+                            date_str=b_date_str,
+                            start_time_str=b_start_str,
+                            end_time_str=b_end_str
+                        )
+                        st.success(f"🎉 Booking Confirmed! '{course_unit}' booked in {selected_room_label} on {b_date_str} ({b_start_str}-{b_end_str}).")
+                        st.balloons()
+                    except ValueError as e:
+                        st.error(f"❌ {str(e)}")
 
 # ---------------------------------------------------------------------------
 # Tab 4: My Active Bookings
@@ -419,6 +452,7 @@ with tab_my_bookings:
                 if b['user_id'] == user['id']:
                     user_bookings.append({**b, "room_name": r['name']})
                     
+        user_bookings = get_bookings_by_user(user['id'], status='confirmed')
         if not user_bookings:
             st.info(f"No active bookings found for {search_email}.")
         else:
@@ -426,6 +460,7 @@ with tab_my_bookings:
                 col_details, col_cancel = st.columns([3, 1])
                 with col_details:
                     st.markdown(f"**{b['course_unit']}** — Room: `{b['room_name']}`")
+                    st.markdown(f"**{b['course_unit']}** — Room: `{b['room_name']}` ({b.get('building_name', '')})")
                     st.caption(f"📅 Date: {b['date']} | ⏰ Time: {b['start_time']} - {b['end_time']}")
                     
                     # --- NEW: Action Button to Map Route from My Location to Booked Room ---
