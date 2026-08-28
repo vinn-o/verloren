@@ -236,7 +236,7 @@ with tab_map:
             st.link_button("🗺️ Open Google Maps Walking Route", gmaps_url, use_container_width=True)
 
     with col_map_view:
-        m = folium.Map(location=[-1.0948, 37.0152], zoom_start=17, tiles="ESRI.WorldImagery")
+        m = folium.Map(location=[-1.0948, 37.0152], zoom_start=17, tiles="OpenStreetMap")
         
         # User Location Pin
         folium.Marker(
