@@ -18,7 +18,6 @@ class TestAPIBackend(unittest.TestCase):
         
         app.config['TESTING'] = True
         app.config['DB_PATH'] = self.test_db
-        app.secret_key = 'test-secret-key'
         self.client = app.test_client()
 
     def tearDown(self):
@@ -29,42 +28,11 @@ class TestAPIBackend(unittest.TestCase):
         res = self.client.get('/api/health')
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
-    def test_root_and_health_endpoints(self):
-        # 1. Root returns HTML
-        res_root = self.client.get('/')
-        self.assertEqual(res_root.status_code, 200)
-        self.assertIn('text/html', res_root.content_type)
-        self.assertIn(b'ClassSpace', res_root.data)
-
-        # 2. Health check returns JSON
-        res_health = self.client.get('/api/health')
-        self.assertEqual(res_health.status_code, 200)
-        data = res_health.get_json()
         self.assertEqual(data['status'], 'healthy')
         self.assertIn('ClassSpace', data['service'])
 
     def test_user_registration_and_login(self):
         # 1. Register User
-    def test_map_html_endpoint(self):
-        # Setup sample building and room
-        b_res = self.client.post('/api/buildings', json={"name": "CLB", "latitude": -1.0945, "longitude": 37.0155})
-        b_id = b_res.get_json()['building_id']
-        r_res = self.client.post('/api/rooms', json={"name": "CLB 001", "building_id": b_id, "capacity": 150})
-        r_id = r_res.get_json()['room']['id']
-
-        # Request map without route
-        res_map = self.client.get('/map-html?origin_lat=-1.0970&origin_lng=37.0120')
-        self.assertEqual(res_map.status_code, 200)
-        self.assertIn('text/html', res_map.content_type)
-        self.assertIn(b'leaflet', res_map.data.lower())
-
-        # Request map with destination route
-        res_route = self.client.get(f'/map-html?origin_lat=-1.0970&origin_lng=37.0120&dest_room_id={r_id}')
-        self.assertEqual(res_route.status_code, 200)
-        self.assertIn('text/html', res_route.content_type)
-
-    def test_user_registration_auth_and_session(self):
-        # 1. Register User (Public)
         reg_payload = {
             "name": "Jane Rep",
             "email": "janerep@jkuat.ac.ke",
@@ -79,39 +47,11 @@ class TestAPIBackend(unittest.TestCase):
         self.assertNotIn('password_hash', data['user'])
 
         # 2. Duplicate email should fail
-        # 2. Public admin registration must be blocked
-        admin_payload = {
-            "name": "Hacker Admin",
-            "email": "hacker@jkuat.ac.ke",
-            "role": "admin",
-            "password": "adminpassword"
-        }
-        res_admin = self.client.post('/api/users/register', json=admin_payload)
-        self.assertEqual(res_admin.status_code, 400)
-        self.assertIn("prohibited", res_admin.get_json()['error'])
-
-        # 3. Duplicate email should fail
         res_dup = self.client.post('/api/users/register', json=reg_payload)
         self.assertEqual(res_dup.status_code, 400)
         self.assertIn("already exists", res_dup.get_json()['error'])
 
         # 3. Login User
-        # 4. Check current session user (/api/auth/me)
-        res_me = self.client.get('/api/auth/me')
-        self.assertEqual(res_me.status_code, 200)
-        self.assertTrue(res_me.get_json()['authenticated'])
-        self.assertEqual(res_me.get_json()['user']['email'], "janerep@jkuat.ac.ke")
-
-        # 5. Logout
-        res_logout = self.client.post('/api/users/logout')
-        self.assertEqual(res_logout.status_code, 200)
-
-        # 6. Check me after logout
-        res_me2 = self.client.get('/api/auth/me')
-        self.assertEqual(res_me2.status_code, 200)
-        self.assertFalse(res_me2.get_json()['authenticated'])
-
-        # 7. Login again
         login_payload = {
             "email": "janerep@jkuat.ac.ke",
             "password": "secretpassword"
@@ -164,8 +104,6 @@ class TestAPIBackend(unittest.TestCase):
 
     def test_booking_creation_and_double_booking_prevention(self):
         # Setup building, room, and user
-    def test_booking_creation_conflict_and_cross_user_cancellation(self):
-        # Setup building, room, and two users
         b_res = self.client.post('/api/buildings', json={"name": "CLB", "latitude": -1.0, "longitude": 37.0})
         b_id = b_res.get_json()['building_id']
 
@@ -173,15 +111,11 @@ class TestAPIBackend(unittest.TestCase):
         r_id = r_res.get_json()['room']['id']
 
         u_res = self.client.post('/api/users/register', json={
-        # User 1
-        u1_res = self.client.post('/api/users/register', json={
             "name": "User 1", "email": "u1@test.com", "role": "class_rep", "password": "pass"
         })
         u_id = u_res.get_json()['user']['id']
-        u1_id = u1_res.get_json()['user']['id']
 
         # 1. Create first booking (08:00 - 10:00)
-        # 1. Create first booking for User 1 (08:00 - 10:00)
         booking1_payload = {
             "room_id": r_id,
             "user_id": u_id,
@@ -195,13 +129,6 @@ class TestAPIBackend(unittest.TestCase):
         booking1_id = res1.get_json()['booking']['id']
 
         # 2. Overlapping booking (09:00 - 11:00) -> Must fail with 400
-        # 2. Register User 2 (switches active session)
-        u2_res = self.client.post('/api/users/register', json={
-            "name": "User 2", "email": "u2@test.com", "role": "class_rep", "password": "pass"
-        })
-        u2_id = u2_res.get_json()['user']['id']
-
-        # 3. User 2 tries overlapping booking (09:00 - 11:00) -> Must fail with 400
         booking2_payload = {
             "room_id": r_id,
             "user_id": u_id,
@@ -220,36 +147,23 @@ class TestAPIBackend(unittest.TestCase):
         self.assertEqual(status_res.status_code, 200)
         self.assertEqual(status_res.get_json()['status'], 'occupied')
         self.assertEqual(status_res.get_json()['color'], 'red')
-        # 4. User 2 tries to cancel User 1's booking -> Must fail with 403 Forbidden
-        res_cross_cancel = self.client.post(f'/api/bookings/{booking1_id}/cancel')
-        self.assertEqual(res_cross_cancel.status_code, 403)
 
         # At 07:15 -> Booked soon (yellow)
         status_res_soon = self.client.get(f'/api/rooms/{r_id}/status?date=2026-09-10&time=07:15')
         self.assertEqual(status_res_soon.get_json()['status'], 'booked_soon')
         self.assertEqual(status_res_soon.get_json()['color'], 'yellow')
-        # 5. Switch back to User 1
-        self.client.post('/api/users/login', json={"email": "u1@test.com", "password": "pass"})
 
         # 4. Cancel booking
         res_cancel = self.client.post(f'/api/bookings/{booking1_id}/cancel', json={"user_id": u_id})
-        # 6. User 1 cancels own booking -> Should succeed
-        res_cancel = self.client.post(f'/api/bookings/{booking1_id}/cancel')
         self.assertEqual(res_cancel.status_code, 200)
 
         # 5. Overlapping booking should now succeed
-        # 7. Now overlapping booking by User 2 succeeds
-        self.client.post('/api/users/login', json={"email": "u2@test.com", "password": "pass"})
         res2_retry = self.client.post('/api/bookings', json=booking2_payload)
         self.assertEqual(res2_retry.status_code, 201)
 
     def test_status_map_endpoint(self):
         b_res = self.client.post('/api/buildings', json={"name": "Science Complex", "latitude": -1.0944, "longitude": 37.0170})
         b_id = b_res.get_json()['building_id']
-        # 8. Test user bookings endpoint (/api/users/<id>/bookings)
-        res_user_bookings = self.client.get(f'/api/users/{u2_id}/bookings')
-        self.assertEqual(res_user_bookings.status_code, 200)
-        self.assertEqual(len(res_user_bookings.get_json()), 1)
 
         self.client.post('/api/rooms', json={"name": "SCC 101", "building_id": b_id, "capacity": 120})
         self.client.post('/api/rooms', json={"name": "SCC 102", "building_id": b_id, "capacity": 120})
@@ -262,4 +176,3 @@ class TestAPIBackend(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

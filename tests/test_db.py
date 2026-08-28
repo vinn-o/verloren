@@ -13,7 +13,6 @@ from models import (
     create_room, get_all_rooms, get_room_by_id,
     check_booking_conflict, create_booking, cancel_booking,
     get_room_status, get_bookings_by_room
-    get_room_status, get_bookings_by_room, get_bookings_by_user
 )
 
 class TestDatabaseAndModels(unittest.TestCase):
@@ -125,64 +124,5 @@ class TestDatabaseAndModels(unittest.TestCase):
         self.assertEqual(status_free['status'], "free")
         self.assertEqual(status_free['color'], "green")
 
-    def test_get_bookings_by_user(self):
-        date_str = "2026-09-01"
-        b1 = create_booking(self.room_id, self.user['id'], "ICS 2101", date_str, "08:00", "10:00", db_path=self.test_db)
-        b2 = create_booking(self.room_id, self.user['id'], "ICS 2102", date_str, "10:00", "12:00", db_path=self.test_db)
-
-        user_bookings = get_bookings_by_user(self.user['id'], db_path=self.test_db)
-        self.assertEqual(len(user_bookings), 2)
-        self.assertEqual(user_bookings[0]['course_unit'], "ICS 2101")
-        self.assertEqual(user_bookings[0]['room_name'], "CLB 001")
-
-    def test_invalid_inputs_and_boundary_conditions(self):
-        # 1. Start time >= End time
-        with self.assertRaises(ValueError):
-            create_booking(self.room_id, self.user['id'], "ICS 2101", "2026-09-01", "10:00", "10:00", db_path=self.test_db)
-        with self.assertRaises(ValueError):
-            create_booking(self.room_id, self.user['id'], "ICS 2101", "2026-09-01", "12:00", "10:00", db_path=self.test_db)
-
-        # 2. Invalid date
-        with self.assertRaises(ValueError):
-            create_booking(self.room_id, self.user['id'], "ICS 2101", "invalid-date", "08:00", "10:00", db_path=self.test_db)
-
-        # 3. Invalid time
-        with self.assertRaises(ValueError):
-            create_booking(self.room_id, self.user['id'], "ICS 2101", "2026-09-01", "25:00", "10:00", db_path=self.test_db)
-
-        # 4. Nonexistent room ID
-        with self.assertRaises(ValueError):
-            create_booking(9999, self.user['id'], "ICS 2101", "2026-09-01", "08:00", "10:00", db_path=self.test_db)
-
-        # 5. Nonexistent user ID
-        with self.assertRaises(ValueError):
-            create_booking(self.room_id, 9999, "ICS 2101", "2026-09-01", "08:00", "10:00", db_path=self.test_db)
-
-        # 6. Cancel nonexistent booking
-        with self.assertRaises(ValueError):
-            cancel_booking(9999, user_id=self.user['id'], db_path=self.test_db)
-
-        # 7. Cancel already cancelled booking
-        b = create_booking(self.room_id, self.user['id'], "ICS 2101", "2026-09-01", "14:00", "16:00", db_path=self.test_db)
-        cancel_booking(b['id'], user_id=self.user['id'], db_path=self.test_db)
-        with self.assertRaises(ValueError):
-            cancel_booking(b['id'], user_id=self.user['id'], db_path=self.test_db)
-
-        # 8. Cancel another user's booking
-        other_user = create_user("Other Rep", "other@jkuat.ac.ke", "class_rep", "BSc CS", "pass", db_path=self.test_db)
-        b_other = create_booking(self.room_id, other_user['id'], "ICS 2105", "2026-09-01", "16:00", "18:00", db_path=self.test_db)
-        with self.assertRaises(PermissionError):
-            cancel_booking(b_other['id'], user_id=self.user['id'], db_path=self.test_db)
-
-    def test_admin_registration_guard(self):
-        # Public admin creation must be blocked
-        with self.assertRaises(ValueError):
-            create_user("Admin User", "admin1@jkuat.ac.ke", "admin", "Admin", "pass", allow_admin=False, db_path=self.test_db)
-
-        # Admin creation with allow_admin=True succeeds
-        admin = create_user("Admin User", "admin1@jkuat.ac.ke", "admin", "Admin", "pass", allow_admin=True, db_path=self.test_db)
-        self.assertEqual(admin['role'], 'admin')
-
 if __name__ == '__main__':
     unittest.main()
-

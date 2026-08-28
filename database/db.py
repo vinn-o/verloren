@@ -27,12 +27,5 @@ def init_db(db_path=DB_PATH, schema_path=SCHEMA_PATH):
     conn.close()
     print(f"Database initialized successfully at: {db_path}")
 
-def ensure_db_initialized(db_path=DB_PATH):
-    """
-    Safely and idempotently ensure tables exist without wiping data.
-    """
-    init_db(db_path=db_path)
-
 if __name__ == '__main__':
     init_db()
-
